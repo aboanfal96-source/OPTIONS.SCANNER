@@ -1,0 +1,853 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Options Bullish Scanner // منصة فلترة عقود الخيارات</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700;800&family=Cairo:wght@300;400;600;700;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0e0d;
+    --bg-card: #111816;
+    --bg-elevated: #1a2420;
+    --border: #1f2d28;
+    --text: #e8f0ed;
+    --text-dim: #7a8a85;
+    --green: #00ff88;
+    --green-dim: #00cc6a;
+    --red: #ff3860;
+    --yellow: #ffcc00;
+    --accent: #00ff88;
+    --glow: rgba(0, 255, 136, 0.15);
+  }
+
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+
+  body {
+    font-family: 'Cairo', -apple-system, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+    background-image:
+      radial-gradient(circle at 10% 10%, rgba(0, 255, 136, 0.03) 0%, transparent 40%),
+      radial-gradient(circle at 90% 90%, rgba(0, 255, 136, 0.02) 0%, transparent 40%);
+  }
+
+  .mono { font-family: 'JetBrains Mono', monospace; }
+
+  /* Scanline effect */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent 0,
+      transparent 2px,
+      rgba(255,255,255,0.008) 3px,
+      rgba(255,255,255,0.008) 4px
+    );
+    z-index: 9999;
+  }
+
+  /* HEADER */
+  header {
+    border-bottom: 1px solid var(--border);
+    padding: 16px 32px;
+    background: rgba(10, 14, 13, 0.95);
+    backdrop-filter: blur(20px);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .logo-mark {
+    width: 36px;
+    height: 36px;
+    background: var(--green);
+    color: var(--bg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 800;
+    font-size: 18px;
+    transform: skew(-8deg);
+    box-shadow: 0 0 20px var(--glow);
+  }
+
+  .logo-text {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.1;
+  }
+
+  .logo-text .main {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+  }
+
+  .logo-text .sub {
+    font-size: 11px;
+    color: var(--text-dim);
+    letter-spacing: 0.05em;
+  }
+
+  .status-bar {
+    display: flex;
+    gap: 24px;
+    align-items: center;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+  }
+
+  .status-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--text-dim);
+  }
+
+  .status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--green);
+    box-shadow: 0 0 8px var(--green);
+    animation: pulse 2s ease-in-out infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+
+  /* MAIN */
+  main {
+    padding: 24px 32px;
+    max-width: 1800px;
+    margin: 0 auto;
+  }
+
+  .hero {
+    margin-bottom: 32px;
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 24px;
+    align-items: end;
+  }
+
+  h1 {
+    font-size: clamp(32px, 5vw, 56px);
+    font-weight: 900;
+    line-height: 0.95;
+    letter-spacing: -0.03em;
+  }
+
+  h1 .accent {
+    color: var(--green);
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 800;
+  }
+
+  .tagline {
+    color: var(--text-dim);
+    margin-top: 12px;
+    font-size: 14px;
+    max-width: 500px;
+  }
+
+  .warning-box {
+    border: 1px solid var(--yellow);
+    padding: 12px 16px;
+    background: rgba(255, 204, 0, 0.05);
+    font-size: 12px;
+    color: var(--yellow);
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  /* FILTERS */
+  .filters {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    padding: 24px;
+    margin-bottom: 24px;
+    position: relative;
+  }
+
+  .filters::before {
+    content: 'FILTERS';
+    position: absolute;
+    top: -10px;
+    right: 20px;
+    background: var(--bg);
+    padding: 2px 10px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--green);
+    letter-spacing: 0.2em;
+  }
+
+  .filter-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 16px;
+    margin-bottom: 20px;
+  }
+
+  .filter-item label {
+    display: block;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--text-dim);
+    margin-bottom: 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+  }
+
+  .filter-item input,
+  .filter-item select {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 10px 12px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    transition: all 0.2s;
+  }
+
+  .filter-item input:focus,
+  .filter-item select:focus {
+    outline: none;
+    border-color: var(--green);
+    box-shadow: 0 0 0 1px var(--green);
+  }
+
+  .action-row {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    padding-top: 20px;
+    border-top: 1px solid var(--border);
+  }
+
+  .btn {
+    background: var(--green);
+    color: var(--bg);
+    border: none;
+    padding: 12px 24px;
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 700;
+    font-size: 13px;
+    letter-spacing: 0.1em;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-transform: uppercase;
+    position: relative;
+  }
+
+  .btn:hover {
+    box-shadow: 0 0 24px var(--glow);
+    transform: translateY(-1px);
+  }
+
+  .btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .btn-secondary {
+    background: transparent;
+    color: var(--text);
+    border: 1px solid var(--border);
+  }
+
+  .btn-secondary:hover {
+    border-color: var(--green);
+    color: var(--green);
+  }
+
+  /* RESULTS */
+  .results-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .results-count {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+  }
+
+  .results-count .num {
+    color: var(--green);
+    font-weight: 700;
+    font-size: 20px;
+  }
+
+  /* TABLE */
+  .contracts-grid {
+    display: grid;
+    gap: 12px;
+  }
+
+  .contract-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    padding: 20px;
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    gap: 24px;
+    align-items: center;
+    transition: all 0.2s;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .contract-card::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 3px;
+    background: var(--green);
+    transform: scaleY(0);
+    transform-origin: top;
+    transition: transform 0.3s;
+  }
+
+  .contract-card:hover {
+    border-color: var(--green);
+    background: var(--bg-elevated);
+  }
+
+  .contract-card:hover::after {
+    transform: scaleY(1);
+  }
+
+  .contract-ticker {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 120px;
+  }
+
+  .ticker-symbol {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 22px;
+    font-weight: 800;
+    color: var(--text);
+  }
+
+  .ticker-price {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: var(--text-dim);
+  }
+
+  .contract-info {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+    gap: 16px;
+  }
+
+  .info-cell {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .info-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+  }
+
+  .info-value {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text);
+  }
+
+  .info-value.green { color: var(--green); }
+  .info-value.red { color: var(--red); }
+  .info-value.yellow { color: var(--yellow); }
+
+  .score-ring {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    min-width: 80px;
+  }
+
+  .score-circle {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    border: 3px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 800;
+    font-size: 18px;
+    position: relative;
+  }
+
+  .score-circle.high {
+    border-color: var(--green);
+    color: var(--green);
+    box-shadow: 0 0 16px var(--glow);
+  }
+
+  .score-circle.mid {
+    border-color: var(--yellow);
+    color: var(--yellow);
+  }
+
+  .score-circle.low {
+    border-color: var(--text-dim);
+    color: var(--text-dim);
+  }
+
+  .score-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    color: var(--text-dim);
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+  }
+
+  .signals {
+    grid-column: 1 / -1;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    padding-top: 16px;
+    border-top: 1px dashed var(--border);
+    margin-top: 8px;
+  }
+
+  .signal-tag {
+    font-size: 11px;
+    padding: 4px 10px;
+    background: rgba(0, 255, 136, 0.08);
+    border: 1px solid rgba(0, 255, 136, 0.2);
+    color: var(--green);
+    border-radius: 2px;
+  }
+
+  /* LOADING */
+  .loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 80px 20px;
+    gap: 20px;
+  }
+
+  .loading-bars {
+    display: flex;
+    gap: 6px;
+  }
+
+  .loading-bars div {
+    width: 4px;
+    height: 32px;
+    background: var(--green);
+    animation: bars 1s ease-in-out infinite;
+  }
+
+  .loading-bars div:nth-child(2) { animation-delay: 0.1s; }
+  .loading-bars div:nth-child(3) { animation-delay: 0.2s; }
+  .loading-bars div:nth-child(4) { animation-delay: 0.3s; }
+  .loading-bars div:nth-child(5) { animation-delay: 0.4s; }
+
+  @keyframes bars {
+    0%, 100% { transform: scaleY(0.3); }
+    50% { transform: scaleY(1); }
+  }
+
+  .loading-text {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: var(--text-dim);
+    letter-spacing: 0.2em;
+  }
+
+  .empty {
+    padding: 80px 20px;
+    text-align: center;
+    color: var(--text-dim);
+  }
+
+  .error {
+    background: rgba(255, 56, 96, 0.1);
+    border: 1px solid var(--red);
+    color: var(--red);
+    padding: 16px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+  }
+
+  /* Responsive */
+  @media (max-width: 768px) {
+    .hero { grid-template-columns: 1fr; }
+    main, header { padding: 16px; }
+    .contract-card {
+      grid-template-columns: 1fr;
+      gap: 16px;
+    }
+    .status-bar { display: none; }
+  }
+
+  /* Toggle */
+  .toggle-group {
+    display: flex;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    padding: 2px;
+  }
+
+  .toggle-btn {
+    flex: 1;
+    background: transparent;
+    border: none;
+    color: var(--text-dim);
+    padding: 8px 16px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-weight: 600;
+  }
+
+  .toggle-btn.active {
+    background: var(--green);
+    color: var(--bg);
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-mark">$</div>
+    <div class="logo-text">
+      <span class="main">OPTIONS.SCANNER</span>
+      <span class="sub">bullish contracts finder // US market</span>
+    </div>
+  </div>
+  <div class="status-bar">
+    <div class="status-item">
+      <span class="status-dot"></span>
+      <span id="connection-status">CONNECTING...</span>
+    </div>
+    <div class="status-item mono">
+      <span id="clock">--:--:--</span>
+    </div>
+  </div>
+</header>
+
+<main>
+
+  <section class="hero">
+    <div>
+      <h1>فلتر العقود<br><span class="accent">&gt;_ BULLISH</span></h1>
+      <p class="tagline">
+        يمسح السوق الأمريكي على عقود خيارات ذات إشارات صعود قوية.
+        الحجم غير الطبيعي، الزخم، IV، والسيولة.
+      </p>
+    </div>
+    <div class="warning-box">
+      ⚠️ <div><strong>تحذير:</strong> هذا أداة تحليل، ما هي توصية شراء. الخيارات عالية المخاطر وممكن تخسر كامل راس المال. ادرس كويس قبل أي قرار.</div>
+    </div>
+  </section>
+
+  <section class="filters">
+    <div class="filter-grid">
+      <div class="filter-item">
+        <label>نوع العقد</label>
+        <div class="toggle-group">
+          <button class="toggle-btn active" data-type="calls">CALLS ↗</button>
+          <button class="toggle-btn" data-type="puts">PUTS ↘</button>
+        </div>
+      </div>
+
+      <div class="filter-item">
+        <label>الأسهم (اختياري)</label>
+        <input type="text" id="tickers" placeholder="AAPL, TSLA, NVDA..." />
+      </div>
+
+      <div class="filter-item">
+        <label>حد أدنى للحجم</label>
+        <input type="number" id="min_volume" value="100" min="0" />
+      </div>
+
+      <div class="filter-item">
+        <label>حد أدنى Open Interest</label>
+        <input type="number" id="min_oi" value="50" min="0" />
+      </div>
+
+      <div class="filter-item">
+        <label>نسبة Volume/OI</label>
+        <input type="number" id="min_unusual" value="2" step="0.5" min="1" />
+      </div>
+
+      <div class="filter-item">
+        <label>أقل مدة (أيام)</label>
+        <input type="number" id="min_days" value="3" min="0" />
+      </div>
+
+      <div class="filter-item">
+        <label>أقصى مدة (أيام)</label>
+        <input type="number" id="max_days" value="45" min="1" />
+      </div>
+
+      <div class="filter-item">
+        <label>Score أدنى (Bullish فقط)</label>
+        <select id="bullish_only">
+          <option value="true">40+ (موصى به)</option>
+          <option value="false">عرض الكل</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="action-row">
+      <button class="btn" id="scan-btn">▶ بدء المسح</button>
+      <button class="btn btn-secondary" id="reset-btn">إعادة ضبط</button>
+      <span class="mono" style="color:var(--text-dim);font-size:11px;margin-right:auto;">
+        البيانات من Yahoo Finance // تحديث مؤجل ~15 دقيقة
+      </span>
+    </div>
+  </section>
+
+  <section>
+    <div class="results-header">
+      <div class="results-count">
+        النتائج: <span class="num" id="result-count">0</span>
+        <span style="color:var(--text-dim);margin-right:12px;">/ آخر مسح: <span id="last-scan">--</span></span>
+      </div>
+    </div>
+
+    <div id="results" class="contracts-grid">
+      <div class="empty">
+        <p>اضغط "بدء المسح" عشان يشتغل الفلتر على السوق الأمريكي</p>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<script>
+const API = 'http://localhost:8000';
+let optionType = 'calls';
+
+// Toggle
+document.querySelectorAll('.toggle-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.toggle-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    optionType = btn.dataset.type;
+  });
+});
+
+// Clock
+function updateClock() {
+  const now = new Date();
+  document.getElementById('clock').textContent =
+    now.toTimeString().slice(0, 8) + ' ' + Intl.DateTimeFormat().resolvedOptions().timeZone.split('/')[1];
+}
+setInterval(updateClock, 1000);
+updateClock();
+
+// Health check
+async function checkHealth() {
+  try {
+    const r = await fetch(`${API}/health`);
+    if (r.ok) {
+      document.getElementById('connection-status').textContent = 'LIVE';
+      return true;
+    }
+  } catch (e) {}
+  document.getElementById('connection-status').textContent = 'OFFLINE';
+  document.querySelector('.status-dot').style.background = 'var(--red)';
+  document.querySelector('.status-dot').style.boxShadow = '0 0 8px var(--red)';
+  return false;
+}
+checkHealth();
+setInterval(checkHealth, 30000);
+
+// Scan
+document.getElementById('scan-btn').addEventListener('click', runScan);
+document.getElementById('reset-btn').addEventListener('click', () => {
+  document.getElementById('tickers').value = '';
+  document.getElementById('min_volume').value = 100;
+  document.getElementById('min_oi').value = 50;
+  document.getElementById('min_unusual').value = 2;
+  document.getElementById('min_days').value = 3;
+  document.getElementById('max_days').value = 45;
+});
+
+async function runScan() {
+  const btn = document.getElementById('scan-btn');
+  const results = document.getElementById('results');
+
+  btn.disabled = true;
+  btn.textContent = '⟳ جاري المسح...';
+
+  results.innerHTML = `
+    <div class="loading">
+      <div class="loading-bars"><div></div><div></div><div></div><div></div><div></div></div>
+      <div class="loading-text">SCANNING MARKET // قد ياخذ 30-60 ثانية</div>
+    </div>
+  `;
+
+  const tickersInput = document.getElementById('tickers').value.trim();
+  const tickers = tickersInput
+    ? tickersInput.split(/[,\s]+/).map(t => t.toUpperCase()).filter(Boolean)
+    : null;
+
+  const payload = {
+    tickers,
+    min_volume: parseInt(document.getElementById('min_volume').value) || 100,
+    min_oi: parseInt(document.getElementById('min_oi').value) || 50,
+    min_unusual_ratio: parseFloat(document.getElementById('min_unusual').value) || 2,
+    option_type: optionType,
+    min_days_to_expiry: parseInt(document.getElementById('min_days').value) || 3,
+    max_days_to_expiry: parseInt(document.getElementById('max_days').value) || 45,
+    bullish_only: document.getElementById('bullish_only').value === 'true'
+  };
+
+  try {
+    const res = await fetch(`${API}/scan`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(payload)
+    });
+
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+
+    renderResults(data);
+  } catch (e) {
+    results.innerHTML = `<div class="error">❌ خطأ في الاتصال: ${e.message}<br><br>تأكد أن السيرفر شغال على http://localhost:8000</div>`;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '▶ بدء المسح';
+  }
+}
+
+function renderResults(data) {
+  const results = document.getElementById('results');
+  document.getElementById('result-count').textContent = data.count;
+  document.getElementById('last-scan').textContent = new Date(data.timestamp).toLocaleTimeString('ar');
+
+  if (!data.contracts || data.contracts.length === 0) {
+    results.innerHTML = `<div class="empty">ما لقينا عقود تطابق الفلاتر. جرب تخفف الشروط.</div>`;
+    return;
+  }
+
+  results.innerHTML = data.contracts.map(c => {
+    const scoreClass = c.bullish_score >= 60 ? 'high' : c.bullish_score >= 40 ? 'mid' : 'low';
+    const priceChange = c.percent_to_strike;
+    const expDate = new Date(c.expiration).toLocaleDateString('en-US', {month:'short', day:'2-digit'});
+
+    return `
+      <div class="contract-card">
+        <div class="contract-ticker">
+          <span class="ticker-symbol">${c.ticker}</span>
+          <span class="ticker-price">$${c.stock_price.toFixed(2)}</span>
+        </div>
+
+        <div class="contract-info">
+          <div class="info-cell">
+            <span class="info-label">STRIKE</span>
+            <span class="info-value ${c.in_the_money ? 'green' : ''}">$${c.strike.toFixed(2)}</span>
+          </div>
+          <div class="info-cell">
+            <span class="info-label">EXPIRY</span>
+            <span class="info-value">${expDate}</span>
+          </div>
+          <div class="info-cell">
+            <span class="info-label">DAYS</span>
+            <span class="info-value">${c.days_to_expiry}d</span>
+          </div>
+          <div class="info-cell">
+            <span class="info-label">PREMIUM</span>
+            <span class="info-value">$${c.last_price.toFixed(2)}</span>
+          </div>
+          <div class="info-cell">
+            <span class="info-label">VOLUME</span>
+            <span class="info-value green">${c.volume.toLocaleString()}</span>
+          </div>
+          <div class="info-cell">
+            <span class="info-label">OI</span>
+            <span class="info-value">${c.open_interest.toLocaleString()}</span>
+          </div>
+          <div class="info-cell">
+            <span class="info-label">VOL/OI</span>
+            <span class="info-value yellow">${c.unusual_ratio.toFixed(1)}x</span>
+          </div>
+          <div class="info-cell">
+            <span class="info-label">IV</span>
+            <span class="info-value">${(c.implied_volatility * 100).toFixed(0)}%</span>
+          </div>
+          <div class="info-cell">
+            <span class="info-label">TO STRIKE</span>
+            <span class="info-value ${priceChange > 0 ? 'yellow' : 'green'}">
+              ${priceChange > 0 ? '+' : ''}${priceChange.toFixed(1)}%
+            </span>
+          </div>
+        </div>
+
+        <div class="score-ring">
+          <div class="score-circle ${scoreClass}">${c.bullish_score}</div>
+          <span class="score-label">BULL SCORE</span>
+        </div>
+
+        ${c.signals && c.signals.length > 0 ? `
+          <div class="signals">
+            ${c.signals.map(s => `<span class="signal-tag">${s}</span>`).join('')}
+          </div>
+        ` : ''}
+      </div>
+    `;
+  }).join('');
+}
+</script>
+
+</body>
+</html>
